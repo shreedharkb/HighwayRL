@@ -85,7 +85,7 @@ NETWORK_CONFIG = {
 # ============================================================
 
 TRAINING_CONFIG = {
-    "total_timesteps": 50_000,   # Total training steps
+    "total_timesteps": 3_000,   # Total training steps
     "log_interval": 10,          # Log every N updates
     "save_path": "./models/ppo_highway",  # Where to save the model
     "tensorboard_log": "./tensorboard_logs/",  # TensorBoard logs
