@@ -97,7 +97,7 @@ TRAINING_CONFIG = {
 
 ENV_CONFIG = {
     "env_id": "highway-v0",      # Highway driving environment
-    "render_mode": "rgb_array",  # Render mode for training
+    "render_mode": None,         # No rendering for hyper-fast training
     "n_envs": 4,                 # Number of parallel environments
 }
 
