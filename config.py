@@ -106,6 +106,6 @@ ENV_CONFIG = {
 # ============================================================
 
 EVAL_CONFIG = {
-    "n_eval_episodes": 20,       # Number of episodes for evaluation
+    "n_eval_episodes": 50,       # Number of episodes for evaluation
     "deterministic": True,       # Use deterministic policy (no exploration)
 }
