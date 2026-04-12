@@ -7,6 +7,7 @@ import os
 import gymnasium as gym
 import highway_env
 import numpy as np
+import torch
 from stable_baselines3 import A2C
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
@@ -59,8 +60,19 @@ def train_a2c():
     print("A2C TRAINING ON HIGHWAY-V0 (For Comparison with PPO)")
     print("=" * 60)
     
+    # Device Selection
+    # Note: For small MLP policies (256x256), CPU is faster than GPU
+    # because the CPU↔GPU data transfer overhead exceeds the computation time.
+    device = "cpu"
+    print(f"\n🖥️  PyTorch version: {torch.__version__}")
+    print(f"🎮 CUDA available: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"🔥 GPU detected: {torch.cuda.get_device_name(0)}")
+        print(f"📦 VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+    print(f"⚡ Using device: {device} (optimal for MLP policy)\n")
+    
     # Create parallel environments
-    print(f"\nCreating {ENV_CONFIG['n_envs']} parallel environments...")
+    print(f"Creating {ENV_CONFIG['n_envs']} parallel environments...")
     train_env = DummyVecEnv([make_env for _ in range(ENV_CONFIG["n_envs"])])
     eval_env = DummyVecEnv([make_env])
     
@@ -87,6 +99,7 @@ def train_a2c():
         max_grad_norm=A2C_CONFIG["max_grad_norm"],
         tensorboard_log=TRAINING_CONFIG["tensorboard_log"],
         verbose=A2C_CONFIG["verbose"],
+        device=device,
         seed=42,
     )
     

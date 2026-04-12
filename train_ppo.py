@@ -4,8 +4,9 @@ train_ppo.py - Train PPO Agent on Highway-v0
 
 import os
 import gymnasium as gym
-import highway_env  # registers highway environments with gymnasium
+import highway_env
 import numpy as np
+import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
@@ -56,6 +57,15 @@ def make_env():
 def train():
     print("\n🚀 TRAINING PPO ON HIGHWAY-V0\n")
     
+    
+    device = "cpu"
+    print(f"🖥️  PyTorch version: {torch.__version__}")
+    print(f"🎮 CUDA available: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"🔥 GPU detected: {torch.cuda.get_device_name(0)}")
+        print(f"📦 VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+    print(f"⚡ Using device: {device} (optimal for MLP policy)\n")
+    
     train_env = DummyVecEnv([make_env for _ in range(ENV_CONFIG["n_envs"])])
     eval_env = DummyVecEnv([make_env])
     
@@ -77,6 +87,7 @@ def train():
         max_grad_norm=PPO_CONFIG["max_grad_norm"],
         tensorboard_log=TRAINING_CONFIG["tensorboard_log"],
         verbose=PPO_CONFIG["verbose"],
+        device=device,
         seed=42,
     )
     
