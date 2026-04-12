@@ -11,7 +11,7 @@ from config import ENV_CONFIG, EVAL_CONFIG
 
 def evaluate_both_agents():
     print("=" * 70)
-    print("PPO vs A2C DIRECT COMPARISON on Highway-v0")
+    print("PPO vs A2C DIRECT COMPARISON on Highway-fast-v0")
     print("=" * 70)
     
     # Load models
@@ -107,6 +107,7 @@ def evaluate_both_agents():
     print(f"\n{'EVALUATING RANDOM AGENT (Baseline)':^70}")
     print("-" * 70)
     random_rewards = []
+    random_lengths = []
     random_collisions = 0
     
     for episode in range(n_episodes):
@@ -123,6 +124,7 @@ def evaluate_both_agents():
             steps += 1
         
         random_rewards.append(total_reward)
+        random_lengths.append(steps)
         
         if done and not truncated:
             random_collisions += 1
@@ -207,7 +209,56 @@ This comparison demonstrates:
 CONCLUSION: PPO > A2C for this task! 🏆
 """)
     
-    print(f"{'=' * 70}\n")
+    # Generate Evaluation Plot: Two-Panel Professional Layout
+    import matplotlib.pyplot as plt
+    plt.style.use('seaborn-v0_8-whitegrid')
+    
+    # Create side-by-side subplots for maximum clarity
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    
+    agents = ['PPO', 'A2C', 'Random']
+    means = [np.mean(ppo_rewards), np.mean(a2c_rewards), np.mean(random_rewards)]
+    stds = [np.std(ppo_rewards), np.std(a2c_rewards), np.std(random_rewards)]
+    crash_rates = [ppo_collisions/n_episodes*100, a2c_collisions/n_episodes*100, random_collisions/n_episodes*100]
+    
+    colors = ['#2980b9', '#e74c3c', '#7f8c8d']
+    
+    # --- PANEL 1: MEAN REWARDS ---
+    bars1 = ax1.bar(agents, means, yerr=stds, capsize=10, color=colors, alpha=0.9, edgecolor='black', linewidth=1.5)
+    ax1.set_ylabel('Mean Total Reward', fontsize=16, fontweight='bold', labelpad=10)
+    ax1.set_xlabel('Algorithm', fontsize=16, fontweight='bold', labelpad=10)
+    ax1.set_title('Evaluation: Average Reward', fontsize=18, fontweight='bold', pad=20)
+    ax1.tick_params(axis='both', which='major', labelsize=14)
+    ax1.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    # Add value labels
+    for bar in bars1:
+        height = bar.get_height()
+        ax1.text(bar.get_x() + bar.get_width()/2., height + 0.5, f'{height:.1f}', 
+                ha='center', va='bottom', fontweight='bold', fontsize=14)
+
+    # --- PANEL 2: CRASH RATES ---
+    bars2 = ax2.bar(agents, crash_rates, color=colors, alpha=0.9, hatch='//', edgecolor='black', linewidth=1.5)
+    ax2.set_ylabel('Crash Rate Percentage (%)', fontsize=16, fontweight='bold', labelpad=10)
+    ax2.set_xlabel('Algorithm', fontsize=16, fontweight='bold', labelpad=10)
+    ax2.set_title('Evaluation: Collision Safety', fontsize=18, fontweight='bold', pad=20)
+    ax2.set_ylim(0, 115)
+    ax2.tick_params(axis='both', which='major', labelsize=14)
+    ax2.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    # Add percentage labels
+    for bar in bars2:
+        height = bar.get_height()
+        ax2.text(bar.get_x() + bar.get_width()/2., height + 3, f'{height:.0f}%', 
+                ha='center', va='bottom', fontweight='bold', fontsize=14)
+
+    plt.tight_layout()
+    import os
+    os.makedirs("./results", exist_ok=True)
+    plt.savefig('./results/plot_evaluation.png', dpi=300, bbox_inches='tight', facecolor='white')
+    print("✅ Hyper-clear evaluation plot saved to ./results/plot_evaluation.png\n")
+
+
 
 
 if __name__ == "__main__":

@@ -28,8 +28,8 @@
 🎯 Task:         Autonomous Highway Driving (5-lane traffic)
 🧠 Algorithm:    PPO (Proximal Policy Optimization)  
 🏗️ Architecture: Actor-Critic with shared MLP [256, 256]
-📈 Performance:  5.8x better than random baseline
-🔒 Safety:       98% collision-free episodes
+📈 Performance:  2.3x better than random baseline
+🔒 Safety:       100% collision-free evaluation
 ⚡ GPU:           NVIDIA RTX 3050 (CUDA accelerated)
 ⏱️ Training:     50,000 timesteps (~5 minutes)
 ```
@@ -42,10 +42,10 @@
 
 | Metric | PPO 🥇 | A2C 🥈 | Random ❌ |
 |:---:|:---:|:---:|:---:|
-| **Mean Reward** | `35.2 ± 3.1` | `28.4 ± 7.5` | `6.1 ± 2.0` |
-| **Crash Rate** | `2%` | `8%` | `92%` |
-| **Stability (Std)** | `3.1` ✅ | `7.5` ⚠️ | `2.0` |
-| **vs Random** | `+477%` | `+365%` | `---` |
+| **Mean Reward** | `21.1 ± 0.9` | `20.8 ± 2.7` | `9.2 ± 6.4` |
+| **Crash Rate** | `0%` ✅ | `2%` | `92%` |
+| **Stability (Std)** | `0.9` ✅ | `2.7` ⚠️ | `6.4` |
+| **vs Random** | `+129%` | `+125%` | `---` |
 
 </div>
 
@@ -93,16 +93,13 @@ python compare_agents.py
 # Generate comparison plots
 python plot_results.py compare
 
-# Evaluate trained agent
-python evaluate.py
-
 # Record demo video with HUD overlay
 python record_video.py
 ```
 
 ### 🎯 Run Everything (One Command)
 ```bash
-python train_ppo.py && python train_a2c.py && python compare_agents.py && python plot_results.py compare && python evaluate.py && python record_video.py
+python train_ppo.py && python train_a2c.py && python compare_agents.py && python plot_results.py compare && python record_video.py
 ```
 
 ---
@@ -145,7 +142,7 @@ Where:
 
 **Why this matters:** Without clipping (like A2C), the policy can change by 10× in one update → training collapses. PPO limits this to ±20% → stable learning ✅
 
-### 🎮 Environment: Highway-v0
+### 🎮 Environment: Highway-fast-v0
 
 | Property | Details |
 |---|---|
@@ -164,8 +161,7 @@ Where:
 ├── ⚙️  config.py              Centralized hyperparameters
 ├── 🎓 train_ppo.py            PPO training (GPU accelerated)
 ├── 🎓 train_a2c.py            A2C training (for comparison)
-├── 📊 evaluate.py             Performance evaluation
-├── 🔍 compare_agents.py       PPO vs A2C head-to-head
+├── 🔍 compare_agents.py       Performance evaluation & comparison
 ├── 📈 plot_results.py         Generate comparison plots
 ├── 🎬 record_video.py         Record demo with HUD overlay
 ├── 📋 requirements.txt        Python dependencies

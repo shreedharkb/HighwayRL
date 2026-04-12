@@ -1,5 +1,5 @@
 """
-train_ppo.py - Train PPO Agent on Highway-v0
+train_ppo.py - Train PPO Agent on Highway-fast-v0
 """
 
 import os

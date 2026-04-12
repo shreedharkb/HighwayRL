@@ -194,10 +194,10 @@ def record():
         "show_trajectories": True,   # Show AI's predicted paths
     })
 
-    fps = base_env.metadata.get("render_fps", 15)
+    fps = 15  # Always 15fps regardless of env metadata (highway-fast-v0 reports 2 fps which is wrong)
 
     # Recording parameters
-    target_frames = 900   # ~60 seconds at 15fps
+    target_episodes = 50   # Record a full evaluation suite
     min_frames_per_episode = 2
 
     # Create intro title card
@@ -205,7 +205,7 @@ def record():
     font_sub = cv2.FONT_HERSHEY_SIMPLEX
     intro_lines = [
         ("PPO AUTONOMOUS DRIVER", font_title, 1.8, (100, 255, 130), 3),
-        ("Highway-v0  |  Reinforcement Learning", font_sub, 0.9, (150, 180, 200), 1),
+        ("Highway-fast-v0  |  Reinforcement Learning", font_sub, 0.9, (150, 180, 200), 1),
         ("Shreedhar K B  |  23BCS126", font_sub, 0.8, (120, 160, 180), 1),
     ]
     intro_frames = create_title_card(1920, 600, intro_lines, duration_frames=60)
@@ -215,10 +215,10 @@ def record():
     total_steps = 0
     global_reward = 0
 
-    print(f"\nRecording ~60 seconds of gameplay (target: {target_frames} frames @ {fps} fps)...")
-    print("This may span multiple episodes...\n")
+    print(f"\nRecording {target_episodes} full episodes @ {fps} fps...")
+    print("This provides a complete visual evaluation audit.\n")
 
-    while len(gameplay_frames) < target_frames:
+    while total_episodes < target_episodes:
         obs, info = base_env.reset()
         done = False
         truncated = False
@@ -228,9 +228,9 @@ def record():
         episode_frames = []
 
         total_episodes += 1
-        print(f"Recording Episode {total_episodes}...", end=" ", flush=True)
+        print(f"Recording Episode {total_episodes}/{target_episodes}...", end=" ", flush=True)
 
-        while not (done or truncated) and len(gameplay_frames) < target_frames:
+        while not (done or truncated):
             action, _states = model.predict(obs, deterministic=True)
             obs, reward, done, truncated, info = base_env.step(action)
             episode_reward += reward
@@ -258,13 +258,10 @@ def record():
 
     base_env.close()
 
-    # Trim to exact target
-    gameplay_frames = gameplay_frames[:target_frames]
-
     # Create outro title card
     outro_lines = [
         ("TRAINING COMPLETE", font_title, 1.8, (100, 255, 130), 3),
-        (f"Total Reward: {global_reward:.1f}  |  Episodes: {total_episodes}", font_sub, 0.9, (150, 180, 200), 1),
+        (f"Total Reward: {global_reward:.1f}  |  Episodes: 50 (Evaluation)", font_sub, 0.9, (150, 180, 200), 1),
         ("PPO with GAE  |  Actor-Critic Architecture", font_sub, 0.8, (120, 160, 180), 1),
     ]
     outro_frames = create_title_card(1920, 600, outro_lines, duration_frames=45)
@@ -277,6 +274,7 @@ def record():
     print("=" * 60)
 
     video_path = f"{video_folder}/highway_ppo_annotated.mp4"
+    # Save as high-quality MP4 video
     imageio.mimsave(video_path, all_frames, fps=fps, codec='libx264', pixelformat='yuv420p')
 
     video_duration = len(all_frames) / fps

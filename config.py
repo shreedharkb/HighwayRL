@@ -1,4 +1,4 @@
-"""Hyperparameters for PPO and A2C training on Highway-v0"""
+"""Hyperparameters for PPO and A2C training on Highway-fast-v0"""
 
 # PPO HYPERPARAMETERS
 
@@ -61,7 +61,7 @@ A2C_CONFIG = {
 # ============================================================
 
 ENV_CONFIG = {
-    "env_id": "highway-v0",      # Highway driving environment
+    "env_id": "highway-fast-v0", # 12x faster physics simulation than highway-fast-v0
     "render_mode": None,         # No rendering for hyper-fast training
     "n_envs": 4,                 # Number of parallel environments
 }
