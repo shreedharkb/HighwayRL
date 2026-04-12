@@ -49,22 +49,24 @@ def plot_training_results():
     
     # 1. Episode Rewards
     ax1 = axes[0, 0]
-    ax1.plot(rewards, alpha=0.4, color=c_raw, label='Raw Reward')
+    ax1.plot(timesteps, rewards, alpha=0.4, color=c_raw, label='Raw Reward')
     if len(rewards) > 10:
         smoothed = moving_average(rewards, window=10)
-        ax1.plot(range(9, 9+len(smoothed)), smoothed, color=c_smooth, linewidth=2.5, label='10-Ep Moving Avg')
-    ax1.set_xlabel("Episode")
+        smoothed_ts = timesteps[9:]
+        ax1.plot(smoothed_ts, smoothed, color=c_smooth, linewidth=2.5, label='10-Ep Moving Avg')
+    ax1.set_xlabel("Total Timesteps Accumulated")
     ax1.set_ylabel("Total Reward")
     ax1.set_title("Reward Progression", fontsize=14, color='#34495e')
     ax1.legend(loc='upper left', frameon=True, shadow=True)
     
     # 2. Episode Lengths
     ax2 = axes[0, 1]
-    ax2.plot(lengths, alpha=0.4, color=c_len_raw)
+    ax2.plot(timesteps, lengths, alpha=0.4, color=c_len_raw)
     if len(lengths) > 10:
         smoothed_len = moving_average(lengths, window=10)
-        ax2.plot(range(9, 9+len(smoothed_len)), smoothed_len, color=c_len_sm, linewidth=2.5)
-    ax2.set_xlabel("Episode")
+        smoothed_ts = timesteps[9:]
+        ax2.plot(smoothed_ts, smoothed_len, color=c_len_sm, linewidth=2.5)
+    ax2.set_xlabel("Total Timesteps Accumulated")
     ax2.set_ylabel("Steps Survived")
     ax2.set_title("Episode Duration", fontsize=14, color='#34495e')
     
@@ -159,11 +161,11 @@ def plot_ppo_vs_a2c_comparison():
     ax1 = axes[0, 0]
     if len(ppo_rewards) > 10:
         ppo_smooth = moving_average(ppo_rewards, window=10)
-        ax1.plot(range(9, 9+len(ppo_smooth)), ppo_smooth, color=ppo_color, linewidth=4, label='PPO (Clipped)')
+        ax1.plot(ppo_timesteps[9:], ppo_smooth, color=ppo_color, linewidth=4, label='PPO (Clipped)')
     if len(a2c_rewards) > 10:
         a2c_smooth = moving_average(a2c_rewards, window=10)
-        ax1.plot(range(9, 9+len(a2c_smooth)), a2c_smooth, color=a2c_color, linewidth=4, label='A2C (Base)')
-    ax1.set_xlabel("Training Episode", fontweight='bold')
+        ax1.plot(a2c_timesteps[9:], a2c_smooth, color=a2c_color, linewidth=4, label='A2C (Base)')
+    ax1.set_xlabel("Total Timesteps Accumulated", fontweight='bold')
     ax1.set_ylabel("Total Reward", fontweight='bold')
     ax1.set_title("Reward Progression", fontweight='bold')
     ax1.legend(loc='upper left', frameon=True, shadow=True)
@@ -172,11 +174,11 @@ def plot_ppo_vs_a2c_comparison():
     ax2 = axes[0, 1]
     if len(ppo_lengths) > 10:
         ppo_len_smooth = moving_average(ppo_lengths, window=10)
-        ax2.plot(range(9, 9+len(ppo_len_smooth)), ppo_len_smooth, color=ppo_color, linewidth=4, label='PPO')
+        ax2.plot(ppo_timesteps[9:], ppo_len_smooth, color=ppo_color, linewidth=4, label='PPO')
     if len(a2c_lengths) > 10:
         a2c_len_smooth = moving_average(a2c_lengths, window=10)
-        ax2.plot(range(9, 9+len(a2c_len_smooth)), a2c_len_smooth, color=a2c_color, linewidth=4, label='A2C')
-    ax2.set_xlabel("Training Episode", fontweight='bold')
+        ax2.plot(a2c_timesteps[9:], a2c_len_smooth, color=a2c_color, linewidth=4, label='A2C')
+    ax2.set_xlabel("Total Timesteps Accumulated", fontweight='bold')
     ax2.set_ylabel("Steps Survived", fontweight='bold')
     ax2.set_title("Survival (Episode Duration)", fontweight='bold')
     ax2.legend(loc='upper left', frameon=True, shadow=True)
@@ -257,13 +259,13 @@ def plot_ppo_vs_a2c_comparison():
     os.makedirs("./results", exist_ok=True)
     save_path = "./results/ppo_vs_a2c_comparison.png"
     plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
-    print(f"\n✅ Comparison plot saved to {save_path}")
+    print(f"\n[DONE] Comparison plot saved to {save_path}")
     # --- Save Individual Plots for LaTeX Report ---
     # 1. Reward Progression
     fig_r, ax_r = plt.subplots(figsize=(10, 6))
-    if len(ppo_rewards) > 10: ax_r.plot(range(9, 9+len(ppo_smooth)), ppo_smooth, color=ppo_color, linewidth=4, label='PPO', alpha=0.95)
-    if len(a2c_rewards) > 10: ax_r.plot(range(9, 9+len(a2c_smooth)), a2c_smooth, color=a2c_color, linewidth=4, label='A2C', alpha=0.95)
-    ax_r.set_xlabel("Training Episode", fontweight='bold')
+    if len(ppo_rewards) > 10: ax_r.plot(ppo_timesteps[9:], ppo_smooth, color=ppo_color, linewidth=4, label='PPO', alpha=0.95)
+    if len(a2c_rewards) > 10: ax_r.plot(a2c_timesteps[9:], a2c_smooth, color=a2c_color, linewidth=4, label='A2C', alpha=0.95)
+    ax_r.set_xlabel("Total Timesteps Accumulated", fontweight='bold')
     ax_r.set_ylabel("Total Reward", fontweight='bold')
     ax_r.set_title("Reward Progression: PPO vs A2C", fontweight='bold', pad=15)
     ax_r.legend(loc='upper left', frameon=True)
@@ -272,9 +274,9 @@ def plot_ppo_vs_a2c_comparison():
     
     # 2. Episode Duration
     fig_d, ax_d = plt.subplots(figsize=(10, 6))
-    if len(ppo_lengths) > 10: ax_d.plot(range(9, 9+len(ppo_len_smooth)), ppo_len_smooth, color=ppo_color, linewidth=4, label='PPO', alpha=0.95)
-    if len(a2c_lengths) > 10: ax_d.plot(range(9, 9+len(a2c_len_smooth)), a2c_len_smooth, color=a2c_color, linewidth=4, label='A2C', alpha=0.95)
-    ax_d.set_xlabel("Training Episode", fontweight='bold')
+    if len(ppo_lengths) > 10: ax_d.plot(ppo_timesteps[9:], ppo_len_smooth, color=ppo_color, linewidth=4, label='PPO', alpha=0.95)
+    if len(a2c_lengths) > 10: ax_d.plot(a2c_timesteps[9:], a2c_len_smooth, color=a2c_color, linewidth=4, label='A2C', alpha=0.95)
+    ax_d.set_xlabel("Total Timesteps Accumulated", fontweight='bold')
     ax_d.set_ylabel("Steps Survived", fontweight='bold')
     ax_d.set_title("Survival (Episode Duration)", fontweight='bold', pad=15)
     ax_d.legend(loc='upper left', frameon=True)
@@ -292,7 +294,7 @@ def plot_ppo_vs_a2c_comparison():
     fig_e.tight_layout()
     fig_e.savefig("./results/plot_efficiency.png", dpi=300, facecolor='white')
 
-    print(f"\n✅ Individual plots saved to ./results/ (plot_reward.png, plot_duration.png, plot_efficiency.png)")
+    print(f"\n[DONE] Individual plots saved to ./results/ (plot_reward.png, plot_duration.png, plot_efficiency.png)")
     print(f"\nPPO Mean Reward: {ppo_mean:.2f} ± {ppo_std:.2f}")
     print(f"A2C Mean Reward: {a2c_mean:.2f} ± {a2c_std:.2f}")
     print(f"\nPPO Advantage: {((ppo_mean - a2c_mean)/a2c_mean * 100):+.1f}% improvement over A2C")
