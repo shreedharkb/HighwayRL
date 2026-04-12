@@ -18,10 +18,14 @@ env/
 *.swp
 *.swo
 
-# Training artifacts
-*.zip
-logs/
+# Training artifacts (large binary files)
+models/*.zip
 tensorboard_logs/
+logs/
+
+# Results (regenerable)
+results/videos/
+results/*.png
 
 # OS
 .DS_Store
@@ -29,3 +33,12 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# LaTeX build artifacts
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.synctex.gz
+report/*.fls
+report/*.fdb_latexmk
