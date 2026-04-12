@@ -1,55 +1,6 @@
-"""
-config.py - Hyperparameters and Configuration
-===============================================
-This file contains all the hyperparameters used for PPO training.
-Keeping them in a separate file makes it easy to tune and experiment.
+"""Hyperparameters for PPO and A2C training on Highway-v0"""
 
-PPO HYPERPARAMETERS EXPLAINED:
-------------------------------
-1. learning_rate: How fast the neural network updates its weights.
-   - Too high → unstable training, policy oscillates
-   - Too low  → very slow learning
-   - 3e-4 is a good default for PPO
-
-2. n_steps: Number of steps to collect before each policy update.
-   - More steps = more data per update = more stable but slower
-   - 256 is a good balance for discrete action spaces
-
-3. batch_size: Number of samples used in each gradient descent step.
-   - Must divide n_steps evenly
-   - 64 is a common choice
-
-4. n_epochs: Number of times to iterate over the collected data.
-   - More epochs = more learning from same data
-   - Too many epochs → overfitting to old data
-   - 10 is the standard for PPO
-
-5. gamma (discount factor): How much future rewards matter.
-   - 0.99 means future rewards are almost as important as immediate
-   - Lower gamma = more short-sighted agent
-
-6. gae_lambda: Lambda for Generalized Advantage Estimation (GAE).
-   - Controls bias-variance tradeoff in advantage estimation
-   - 0.95 is the standard value
-   - Higher = lower bias, higher variance
-
-7. clip_range: The epsilon for PPO's clipped objective.
-   - Limits how much the policy can change in one update
-   - 0.2 is the standard value from the PPO paper
-   - This is THE key innovation of PPO!
-
-8. ent_coef: Entropy coefficient — encourages exploration.
-   - Higher = more random exploration
-   - 0.01 is a small but helpful amount
-
-9. vf_coef: Value function coefficient in the loss.
-   - Balances policy loss vs value loss
-   - 0.5 is standard
-"""
-
-# ============================================================
 # PPO HYPERPARAMETERS
-# ============================================================
 
 PPO_CONFIG = {
     "learning_rate": 3e-4,       # Adam optimizer learning rate
@@ -85,10 +36,24 @@ NETWORK_CONFIG = {
 # ============================================================
 
 TRAINING_CONFIG = {
-    "total_timesteps": 3_000,   # Total training steps
+    "total_timesteps": 50_000,   # Total training steps (matches report)
     "log_interval": 10,          # Log every N updates
     "save_path": "./models/ppo_highway",  # Where to save the model
     "tensorboard_log": "./tensorboard_logs/",  # TensorBoard logs
+}
+
+# ============================================================
+# A2C HYPERPARAMETERS (for comparison with PPO)
+# ============================================================
+A2C_CONFIG = {
+    "learning_rate": 1e-3,       # A2C typically uses higher learning rate
+    "n_steps": 256,              # Steps per rollout (same as PPO for fair comparison)
+    "gamma": 0.99,               # Discount factor
+    "gae_lambda": 0.95,          # GAE lambda (for fair comparison)
+    "ent_coef": 0.01,            # Entropy bonus
+    "vf_coef": 0.5,              # Value function weight
+    "max_grad_norm": 0.5,        # Gradient clipping
+    "verbose": 1,
 }
 
 # ============================================================

@@ -24,7 +24,7 @@ ACTION_COLORS = {
 }
 
 def draw_progress_bar(frame, x, y, width, height, value, max_value, color):
-    """Draw a game-style progress bar with glow effect."""
+    """Draw progress bar with glow effect."""
     # Background
     cv2.rectangle(frame, (x, y), (x + width, y + height), (30, 30, 40), -1)
     cv2.rectangle(frame, (x, y), (x + width, y + height), (100, 100, 120), 2)
@@ -41,9 +41,7 @@ def draw_progress_bar(frame, x, y, width, height, value, max_value, color):
         cv2.addWeighted(glow_overlay, 0.3, frame, 0.7, 0, frame)
 
 def draw_game_hud(frame, speed, action_name, episode_reward, step_count, total_episodes):
-    """
-    Draw professional game-quality HUD overlay with advanced graphics.
-    """
+    """Draw game-quality HUD overlay."""
     height, width = frame.shape[:2]
     
     # === LEFT PANEL: Main Stats ===

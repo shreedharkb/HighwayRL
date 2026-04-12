@@ -1,24 +1,25 @@
 """
-train_ppo.py - Train PPO Agent on Highway-v0
+train_a2c.py - Train A2C Agent for Comparison with PPO
+Demonstrates how different algorithms perform on the same task
 """
 
 import os
 import gymnasium as gym
-import highway_env  # registers highway environments with gymnasium
+import highway_env
 import numpy as np
-from stable_baselines3 import PPO
+from stable_baselines3 import A2C
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
 from stable_baselines3.common.monitor import Monitor
 import json
 
-from config import PPO_CONFIG, TRAINING_CONFIG, ENV_CONFIG, POLICY_TYPE
+from config import A2C_CONFIG, TRAINING_CONFIG, ENV_CONFIG, POLICY_TYPE
 
 
 class TrainingMetricsCallback(BaseCallback):
     """Logs training metrics to JSON file."""
     
-    def __init__(self, save_path="./results/training_metrics.json", verbose=0):
+    def __init__(self, save_path="./results/training_metrics_a2c.json", verbose=0):
         super().__init__(verbose)
         self.save_path = save_path
         self.episode_rewards = []
@@ -53,30 +54,39 @@ def make_env():
     return env
 
 
-def train():
-    print("\n🚀 TRAINING PPO ON HIGHWAY-V0\n")
+def train_a2c():
+    print("=" * 60)
+    print("A2C TRAINING ON HIGHWAY-V0 (For Comparison with PPO)")
+    print("=" * 60)
     
+    # Create parallel environments
+    print(f"\nCreating {ENV_CONFIG['n_envs']} parallel environments...")
     train_env = DummyVecEnv([make_env for _ in range(ENV_CONFIG["n_envs"])])
     eval_env = DummyVecEnv([make_env])
     
-    print(f"Creating {ENV_CONFIG['n_envs']} parallel environments...")
-    print(f"Environment: {ENV_CONFIG['env_id']}")
+    print(f"  Environment: {ENV_CONFIG['env_id']}")
+    print(f"  Observation shape: {train_env.observation_space.shape}")
+    print(f"  Action space: {train_env.action_space}")
     
-    model = PPO(
+    # Initialize A2C Agent
+    print(f"\nInitializing A2C Agent...")
+    print(f"  Policy: {POLICY_TYPE}")
+    print(f"  Learning Rate: {A2C_CONFIG['learning_rate']}")
+    print(f"  GAE Lambda: {A2C_CONFIG['gae_lambda']}")
+    print(f"  Note: A2C uses NO clipping (unlike PPO)")
+    
+    model = A2C(
         policy=POLICY_TYPE,
         env=train_env,
-        learning_rate=PPO_CONFIG["learning_rate"],
-        n_steps=PPO_CONFIG["n_steps"],
-        batch_size=PPO_CONFIG["batch_size"],
-        n_epochs=PPO_CONFIG["n_epochs"],
-        gamma=PPO_CONFIG["gamma"],
-        gae_lambda=PPO_CONFIG["gae_lambda"],
-        clip_range=PPO_CONFIG["clip_range"],
-        ent_coef=PPO_CONFIG["ent_coef"],
-        vf_coef=PPO_CONFIG["vf_coef"],
-        max_grad_norm=PPO_CONFIG["max_grad_norm"],
+        learning_rate=A2C_CONFIG["learning_rate"],
+        n_steps=A2C_CONFIG["n_steps"],
+        gamma=A2C_CONFIG["gamma"],
+        gae_lambda=A2C_CONFIG["gae_lambda"],
+        ent_coef=A2C_CONFIG["ent_coef"],
+        vf_coef=A2C_CONFIG["vf_coef"],
+        max_grad_norm=A2C_CONFIG["max_grad_norm"],
         tensorboard_log=TRAINING_CONFIG["tensorboard_log"],
-        verbose=PPO_CONFIG["verbose"],
+        verbose=A2C_CONFIG["verbose"],
         seed=42,
     )
     
@@ -98,13 +108,14 @@ def train():
     )
     
     metrics_callback = TrainingMetricsCallback(
-        save_path="./results/training_metrics.json"
+        save_path="./results/training_metrics_a2c.json"
     )
     
     # Train
-    print(f"\nStarting Training...")
+    print(f"\nStarting A2C Training...")
     print(f"  Total Timesteps: {TRAINING_CONFIG['total_timesteps']:,}")
-    print(f"  This may take a few minutes...\n")
+    print(f"  (Same as PPO for fair comparison)")
+    print(f"  This will take a few minutes...\n")
     
     model.learn(
         total_timesteps=TRAINING_CONFIG["total_timesteps"],
@@ -112,13 +123,23 @@ def train():
         progress_bar=True,
     )
     
-    save_path = TRAINING_CONFIG["save_path"] + "_final"
+    # Save final model
+    save_path = "./models/a2c_highway_final"
     model.save(save_path)
-    print(f"Model saved: {save_path}.zip")
+    print(f"\nModel saved to: {save_path}.zip")
     
+    # Print summary
     if metrics_callback.episode_rewards:
         rewards = metrics_callback.episode_rewards
-        print(f"Episodes: {len(rewards)} | Mean: {np.mean(rewards[-10:]):.2f} | Max: {max(rewards):.2f}")
+        last_10 = rewards[-10:] if len(rewards) >= 10 else rewards
+        print(f"\nA2C TRAINING SUMMARY:")
+        print(f"  Total Episodes: {len(rewards)}")
+        print(f"  Final 10 Avg Reward: {np.mean(last_10):.2f}")
+        print(f"  Best Reward: {max(rewards):.2f}")
+        print(f"  Worst Reward: {min(rewards):.2f}")
+        print(f"  Std Dev: {np.std(rewards):.2f}")
+    
+    print(f"\nA2C Training Complete!")
     
     train_env.close()
     eval_env.close()
@@ -126,4 +147,4 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    train_a2c()
