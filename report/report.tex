@@ -102,55 +102,43 @@ We use GAE ($\gamma=0.99, \lambda=0.95$) to balance bias and variance. PPO preve
 \end{equation}
 The total loss $L = L^{\text{CLIP}} - 0.5 L^{\text{VF}} + 0.01 H[\pi_\theta]$ includes value loss and entropy bonus for exploration. Building these custom PyTorch engines allowed direct insight into the differences between PPO's clipped surrogate objective and A2C's standard policy gradient, providing a robust modular framework for autonomous driving.
 
-\section{Implementation \& Results}
-Training used an NVIDIA RTX 3050. Both custom PyTorch agents (PPO and A2C) were trained for 50k timesteps with optimized learning rates ($3\text{e-}4$ for PPO and $7\text{e-}4$ for A2C).
-
-\begin{table}[H]
-\centering
-\small
-\caption{Comparative Evaluation (50 Test Episodes)}
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-\textbf{Metric} & \textbf{Custom PPO} & \textbf{Custom A2C} & \textbf{Random Agent} & \textbf{PPO vs A2C} \\ \midrule
-Mean Reward & $\mathbf{244.1}$ & $79.4$ & $35.3$ & $+207\%$ \\
-Crash Rate & $\mathbf{4\%}$ & $100\%$ & $100\%$ & Exceptional Safety \\
-\bottomrule
-\end{tabular}
-\end{table}
+\section{Implementation \& Detailed Analysis}
+Training was executed on an NVIDIA RTX 3050. The custom PyTorch architectures (PPO and A2C) were trained from scratch for 50,000 timesteps using optimized learning rates ($3\text{e-}4$ for PPO and $7\text{e-}4$ for A2C). We conducted an empirical analysis comparing their convergence, stability, and final evaluation performance.
 
 \subsection{Performance Visualization}
 \begin{figure}[H]
     \centering
     \begin{minipage}{0.48\textwidth}
-        \includegraphics[width=\linewidth]{plot_reward.png}
-        \caption{Reward Progression.}
+        \includegraphics[width=\linewidth]{plot1_learning_curve.png}
+        \caption{Training Learning Curve (Rewards).}
     \end{minipage}\hfill
     \begin{minipage}{0.48\textwidth}
-        \includegraphics[width=\linewidth]{plot_duration.png}
-        \caption{Survival Time.}
+        \includegraphics[width=\linewidth]{plot2_survival_time.png}
+        \caption{Agent Survival Time (Episode Lengths).}
     \end{minipage}
     \\[4pt]
     \begin{minipage}{0.48\textwidth}
-        \includegraphics[width=\linewidth]{plot_efficiency.png}
-        \caption{Sample Efficiency.}
+        \includegraphics[width=\linewidth]{plot3_eval_distribution.png}
+        \caption{Final Policy Evaluation (Histogram).}
     \end{minipage}\hfill
     \begin{minipage}{0.48\textwidth}
-        \includegraphics[width=\linewidth]{plot_evaluation.png}
-        \caption{Final Performance Split.}
+        \includegraphics[width=\linewidth]{plot4_eval_barchart.png}
+        \caption{Average Survival Steps (Bar Chart).}
     \end{minipage}
 \end{figure}
 
-PPO demonstrates smooth improvement with clear convergence. Our from-scratch A2C implementation, while functional, exhibited significant variance and instability compared to PPO, highlighting the critical importance of the clipping mechanism in high-dimensional state spaces.
+\subsection{Results and Detailed Analysis}
+The generated analytics provide a definitive comparison between PPO and the baseline A2C framework.
 
-\subsection{Key Findings}
 \begin{itemize}
-    \item \textbf{Safety:} Our Custom PPO achieved a highly resilient 4\% crash rate in dense traffic, vastly outperforming both Custom A2C and the random baseline which both failed to avoid collisions effectively.
-    \item \textbf{Stability:} PPO's clipping prevented the destructive policy updates observed in our A2C implementation, leading to much more reliable convergence.
-    \item \textbf{Behavior:} The PPO agent learned to weave through traffic and execute high-speed overtaking maneuvers safely.
+    \item \textbf{Convergence and Learning Efficiency (Figure 1):} The learning curve clearly shows PPO converging significantly faster and reaching a much higher overall average reward compared to A2C. PPO quickly surpassed an average reward of 35 over the 100-episode rolling window, while A2C struggled to cross 30, demonstrating PPO's superior sample efficiency. 
+    \item \textbf{Survival and Safety (Figure 2):} In the \texttt{highway-fast-v0} environment, greater survival steps directly correlate to safer driving behavior. Figure 2 proves that the custom PPO agent consistently maintained average episode lengths above 45-50 steps within its rolling window, meaning it learned to safely navigate and overtake traffic without destructive collisions. A2C, meanwhile, crashed more frequently, showing high variance in its survival trajectory.
+    \item \textbf{Final Policy Stability (Figure 3):} Evaluating the final 100 episodes directly isolates the converged policy's performance. The reward distribution histogram highlights a massive clustering of PPO episodes in the highest reward bins. In contrast, A2C's episodes are spread widely across lower-return bins, indicating that standard policy gradients without clipping suffer from unrecoverable drops in policy quality even late in training.
+    \item \textbf{Consistency Profiling (Figure 4):} The final survival bar chart emphasizes not just the higher mean survival of PPO, but crucially its tighter standard deviation. PPO's clipped objective function prevented the agent from suddenly forgetting its driving policy, leading to highly consistent, safe lane-changing maneuvers.
 \end{itemize}
 
 \section{Conclusion}
-Building both PPO and A2C from scratch in PyTorch conclusively proved PPO's superiority in stability and safety for autonomous driving. The customized implementation provided depth to the analysis of clipped objectives versus standard policy gradients in complex traffic environments.
+Building both algorithms physically from scratch using PyTorch confirmed the immense mathematical advantage of Proximal Policy Optimization. By limiting the magnitude of policy updates via its clipped surrogate objective, PPO completely outperformed standard A2C in stability, reward maximization, and overall collision avoidance in a high-density traffic simulation.
 
 \begin{thebibliography}{9}
 \small

@@ -1,3 +1,46 @@
+# PPO vs A2C for Autonomous Highway Driving
+
+This repository contains a **100% custom, from-scratch PyTorch implementation** of Proximal Policy Optimization (PPO) and Advantage Actor-Critic (A2C) algorithms trained to navigate the `highway-fast-v0` environment.
+
+This project was built without relying on high-level Reinforcement Learning libraries like `stable-baselines3`, `rllib`, or `cleanrl`. The neural networks, surrogate objectives, clipping mechanisms, and Generalized Advantage Estimation (GAE) are explicitly calculated using core PyTorch tensor operations.
+
+## Features
+* **Custom PyTorch RL Logic:** Fully custom Actor-Critic architecture and loss functions.
+* **Environment:** Implemented inside `highway-env` to simulate a dense 4-lane traffic environment.
+* **Metrics Dashboard:** Custom Matplotlib analytics generation scripts for evaluating the performance delta between PPO and A2C.
+
+## Project Structure
+
+- `train_ppo.py` - Custom PPO algorithm and physics loop
+- `train_a2c.py` - Custom A2C algorithm and physics loop
+- `plot_metrics.py` - Generates 4-panel visual analytics from saved JSON metrics
+- `evaluate_and_plot.py` - 50k-step evaluation suite
+- `models/` - Custom model weight checkpoints (.pth)
+- `results/` - Training logs and exported evaluation PNGs
+- `report/` - Detailed LaTeX report based on the actual metrics
+
+
+## Usage Instructions
+
+### 1. Training the Agents
+To train either algorithm from scratch for 50,000 timesteps, run the respective script. The scripts will display real-time ETA, FPS, and progress.
+```bash
+python train_ppo.py
+python train_a2c.py
+```
+
+### 2. Generating Analytics
+Once training has generated `ppo_metrics.json` and `a2c_metrics.json`, you can generate professional LaTeX performance curves.
+```bash
+python plot_metrics.py
+```
+This generates four high-resolution `.png` files suitable for LaTeX insertion.
+
+## Results Summary
+Our custom PyTorch evaluations consistently proved that PPO's clipped surrogate objective provides significantly higher stability and collision-avoidance capability in autonomous driving compared to the standard, unclipped Generalized Advantage Estimation policy updates of A2C.
+
+---
+**Author:** Shreedhar K B (23BCS126)
 <div align="center">
 
 # 🏎️ PPO Autonomous Highway Driving
