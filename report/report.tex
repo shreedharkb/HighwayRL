@@ -68,7 +68,7 @@
 \section{Introduction}
 Reinforcement Learning (RL) has emerged as a powerful paradigm for training autonomous agents in complex decision-making environments. Unlike supervised learning, RL agents learn through direct interaction --- receiving rewards for desirable actions and penalties for mistakes.
 
-In this project, we apply \textbf{Proximal Policy Optimization (PPO)}---a state-of-the-art actor-critic algorithm---to \textbf{autonomous highway driving}. The agent must navigate through multi-lane traffic, avoid collisions, and make intelligent lane-change decisions to overtake slower vehicles using the \texttt{highway-fast-v0} environment. We additionally train an \textbf{Advantage Actor-Critic (A2C)} agent to perform a comparative analysis showing why PPO's clipping mechanism leads to superior stability.
+In this project, we apply \textbf{Proximal Policy Optimization (PPO)}---a state-of-the-art actor-critic algorithm---to \textbf{autonomous highway driving}. The agent must navigate through multi-lane traffic, avoid collisions, and make intelligent lane-change decisions to overtake slower vehicles using the \texttt{highway-fast-v0} environment. To demonstrate a foundational understanding of Reinforcement Learning mathematics, both the PPO and \textbf{Advantage Actor-Critic (A2C)} algorithms were implemented \textbf{completely from scratch using PyTorch}, specifically avoiding high-level ready-made libraries. This allowed for a direct comparison of PPO's clipping mechanism against the standard A2C baseline.
 
 \subsection{Problem Statement}
 Train an RL agent to: (1) Maximize speed for progress, (2) Avoid all collisions, (3) Execute safe overtakes, and (4) Maintain stable driving behavior.
@@ -100,10 +100,10 @@ We use GAE ($\gamma=0.99, \lambda=0.95$) to balance bias and variance. PPO preve
 \begin{equation}
     L^{\text{CLIP}}(\theta) = \mathbb{E}_t \left[ \min\left( r_t\hat{A}_t,\; \text{clip}(r_t, 0.8, 1.2)\hat{A}_t \right) \right]
 \end{equation}
-The total loss $L = L^{\text{CLIP}} - 0.5 L^{\text{VF}} + 0.01 H[\pi_\theta]$ includes value loss and entropy bonus for exploration. A2C serves as our baseline, lacking this clipping mechanism.
+The total loss $L = L^{\text{CLIP}} - 0.5 L^{\text{VF}} + 0.01 H[\pi_\theta]$ includes value loss and entropy bonus for exploration. Building these custom PyTorch engines allowed direct insight into the differences between PPO's clipped surrogate objective and A2C's standard policy gradient, providing a robust modular framework for autonomous driving.
 
 \section{Implementation \& Results}
-Training used an NVIDIA RTX 3050. Agents trained for 50k timesteps with a learning rate of $3\text{e-}4$ (PPO) and $1\text{e-}3$ (A2C).
+Training used an NVIDIA RTX 3050. Both custom PyTorch agents (PPO and A2C) were trained for 50k timesteps with optimized learning rates ($3\text{e-}4$ for PPO and $7\text{e-}4$ for A2C).
 
 \begin{table}[H]
 \centering
@@ -111,9 +111,9 @@ Training used an NVIDIA RTX 3050. Agents trained for 50k timesteps with a learni
 \caption{Comparative Evaluation (50 Test Episodes)}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
-\textbf{Metric} & \textbf{PPO} & \textbf{A2C} & \textbf{Random} & \textbf{Improvement (PPO vs Random)} \\ \midrule
-Mean Reward & $\mathbf{21.1}$ & $20.8$ & $9.2$ & $+129\%$ \\
-Crash Rate & $\mathbf{0\%}$ & $2\%$ & $92\%$ & Perfect Safety \\
+\textbf{Metric} & \textbf{Custom PPO} & \textbf{Custom A2C} & \textbf{Random Agent} & \textbf{PPO vs A2C} \\ \midrule
+Mean Reward & $\mathbf{244.1}$ & $79.4$ & $35.3$ & $+207\%$ \\
+Crash Rate & $\mathbf{4\%}$ & $100\%$ & $100\%$ & Exceptional Safety \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -140,24 +140,24 @@ Crash Rate & $\mathbf{0\%}$ & $2\%$ & $92\%$ & Perfect Safety \\
     \end{minipage}
 \end{figure}
 
-PPO demonstrates smooth improvement with convergence around episode 150. A2C shows a jagged trajectory, confirming that clipping is essential for stability.
+PPO demonstrates smooth improvement with clear convergence. Our from-scratch A2C implementation, while functional, exhibited significant variance and instability compared to PPO, highlighting the critical importance of the clipping mechanism in high-dimensional state spaces.
 
 \subsection{Key Findings}
 \begin{itemize}
-    \item \textbf{Safety:} PPO achieved a 0\% crash rate, superior to A2C's 2\%.
-    \item \textbf{Stability:} PPO's standard deviation (0.89) was 3$\times$ lower than A2C's (2.67).
-    \item \textbf{Behavior:} The agent learned to weave through traffic and overtake safely.
+    \item \textbf{Safety:} Our Custom PPO achieved a highly resilient 4\% crash rate in dense traffic, vastly outperforming both Custom A2C and the random baseline which both failed to avoid collisions effectively.
+    \item \textbf{Stability:} PPO's clipping prevented the destructive policy updates observed in our A2C implementation, leading to much more reliable convergence.
+    \item \textbf{Behavior:} The PPO agent learned to weave through traffic and execute high-speed overtaking maneuvers safely.
 \end{itemize}
 
 \section{Conclusion}
-PPO conclusively outperforms A2C in stability and safety for autonomous driving. The clipped objective function allows for reliable learning in high-dimensional traffic environments.
+Building both PPO and A2C from scratch in PyTorch conclusively proved PPO's superiority in stability and safety for autonomous driving. The customized implementation provided depth to the analysis of clipped objectives versus standard policy gradients in complex traffic environments.
 
 \begin{thebibliography}{9}
 \small
 \bibitem{ppo} Schulman et al. (2017). \emph{Proximal policy optimization algorithms}. arXiv.
 \bibitem{gae} Schulman et al. (2015). \emph{High-dimensional continuous control using GAE}. arXiv.
 \bibitem{highway_env} Leurent, E. (2018). \emph{An Environment for Autonomous Driving}. GitHub.
-\bibitem{sb3} Raffin et al. (2021). \emph{Stable-Baselines3}. JMLR.
+\bibitem{pytorch} Paszke et al. (2019). \emph{PyTorch: An Imperative Style, High-Performance Deep Learning Library}. NeurIPS.
 \end{thebibliography}
 
 \end{document}

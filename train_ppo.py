@@ -1,41 +1,32 @@
 """
-train_ppo.py - Train PPO Agent on Highway-fast-v0
+train_ppo.py - Train Custom PPO Agent on Highway-v0
 """
 
 import os
 import gymnasium as gym
 import highway_env
 import numpy as np
-import torch
-from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
-from stable_baselines3.common.monitor import Monitor
 import json
+import torch
 
-from config import PPO_CONFIG, TRAINING_CONFIG, ENV_CONFIG, POLICY_TYPE
+from models.custom_ppo import CustomPPO
+from config import PPO_CONFIG, TRAINING_CONFIG, ENV_CONFIG
 
-
-class TrainingMetricsCallback(BaseCallback):
+class TrainingMetricsCallback:
     """Logs training metrics to JSON file."""
     
-    def __init__(self, save_path="./results/training_metrics.json", verbose=0):
-        super().__init__(verbose)
+    def __init__(self, save_path="./results/training_metrics.json"):
         self.save_path = save_path
         self.episode_rewards = []
         self.episode_lengths = []
         self.timesteps_log = []
         
-    def _on_step(self) -> bool:
-        infos = self.locals.get("infos", [])
-        for info in infos:
-            if "episode" in info:
-                self.episode_rewards.append(info["episode"]["r"])
-                self.episode_lengths.append(info["episode"]["l"])
-                self.timesteps_log.append(self.num_timesteps)
-        return True
-    
-    def _on_training_end(self) -> None:
+    def on_episode_end(self, reward, length, timestep):
+        self.episode_rewards.append(reward)
+        self.episode_lengths.append(length)
+        self.timesteps_log.append(timestep)
+        
+    def save_metrics(self):
         os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
         metrics = {
             "episode_rewards": self.episode_rewards,
@@ -46,35 +37,31 @@ class TrainingMetricsCallback(BaseCallback):
             json.dump(metrics, f, indent=2)
         print(f"\nTraining metrics saved to {self.save_path}")
 
-
-def make_env():
-    """Create Highway environment with monitoring."""
-    env = gym.make(ENV_CONFIG["env_id"], render_mode=ENV_CONFIG["render_mode"])
-    env = Monitor(env)
-    return env
-
+def make_env(env_id, render_mode):
+    def _init():
+        env = gym.make(env_id, render_mode=render_mode)
+        from config import HIGHWAY_ENV_CONFIG
+        env.unwrapped.configure(HIGHWAY_ENV_CONFIG)
+        env.reset()
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        return env
+    return _init
 
 def train():
-    print("\n🚀 TRAINING PPO ON HIGHWAY-V0\n")
+    print("\n🚀 TRAINING CUSTOM PPO ON HIGHWAY-V0\n")
     
-    
-    device = "cpu"
-    print(f"🖥️  PyTorch version: {torch.__version__}")
-    print(f"🎮 CUDA available: {torch.cuda.is_available()}")
-    if torch.cuda.is_available():
-        print(f"🔥 GPU detected: {torch.cuda.get_device_name(0)}")
-        print(f"📦 VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
-    print(f"⚡ Using device: {device} (optimal for MLP policy)\n")
-    
-    train_env = DummyVecEnv([make_env for _ in range(ENV_CONFIG["n_envs"])])
-    eval_env = DummyVecEnv([make_env])
+    # Use Gymnasium's built-in vectorization
+    env_fns = [make_env(ENV_CONFIG["env_id"], ENV_CONFIG["render_mode"]) for _ in range(ENV_CONFIG["n_envs"])]
+    envs = gym.vector.SyncVectorEnv(env_fns)
     
     print(f"Creating {ENV_CONFIG['n_envs']} parallel environments...")
     print(f"Environment: {ENV_CONFIG['env_id']}")
     
-    model = PPO(
-        policy=POLICY_TYPE,
-        env=train_env,
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+    
+    model = CustomPPO(
+        envs=envs,
         learning_rate=PPO_CONFIG["learning_rate"],
         n_steps=PPO_CONFIG["n_steps"],
         batch_size=PPO_CONFIG["batch_size"],
@@ -85,28 +72,16 @@ def train():
         ent_coef=PPO_CONFIG["ent_coef"],
         vf_coef=PPO_CONFIG["vf_coef"],
         max_grad_norm=PPO_CONFIG["max_grad_norm"],
-        tensorboard_log=TRAINING_CONFIG["tensorboard_log"],
-        verbose=PPO_CONFIG["verbose"],
         device=device,
-        seed=42,
+        verbose=PPO_CONFIG["verbose"],
     )
     
     print(f"\nNetwork Architecture:")
-    print(f"  {model.policy}")
+    print(model.network)
     
     # Setup callbacks
     os.makedirs("./models", exist_ok=True)
     os.makedirs("./results", exist_ok=True)
-    
-    eval_callback = EvalCallback(
-        eval_env,
-        best_model_save_path="./models/",
-        log_path="./results/",
-        eval_freq=2500,
-        n_eval_episodes=5,
-        deterministic=True,
-        render=False,
-    )
     
     metrics_callback = TrainingMetricsCallback(
         save_path="./results/training_metrics.json"
@@ -119,22 +94,21 @@ def train():
     
     model.learn(
         total_timesteps=TRAINING_CONFIG["total_timesteps"],
-        callback=[eval_callback, metrics_callback],
-        progress_bar=True,
+        metrics_callback=metrics_callback,
     )
     
     save_path = TRAINING_CONFIG["save_path"] + "_final"
     model.save(save_path)
-    print(f"Model saved: {save_path}.zip")
+    print(f"Model saved: {save_path}.pt")
+    
+    metrics_callback.save_metrics()
     
     if metrics_callback.episode_rewards:
         rewards = metrics_callback.episode_rewards
         print(f"Episodes: {len(rewards)} | Mean: {np.mean(rewards[-10:]):.2f} | Max: {max(rewards):.2f}")
     
-    train_env.close()
-    eval_env.close()
+    envs.close()
     return model
-
 
 if __name__ == "__main__":
     train()

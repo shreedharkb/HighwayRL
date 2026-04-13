@@ -1,265 +1,156 @@
 """
-compare_agents.py - Direct evaluation comparison of PPO vs A2C agents
+compare_agents.py - Direct evaluation comparison of Custom PPO, Custom A2C, and Random Baseline
 """
 
 import gymnasium as gym
 import highway_env
 import numpy as np
-from stable_baselines3 import PPO, A2C
-from config import ENV_CONFIG, EVAL_CONFIG
+import torch
+import os
+import matplotlib.pyplot as plt
 
+from config import ENV_CONFIG, HIGHWAY_ENV_CONFIG, EVAL_CONFIG
+from models.custom_ppo import CustomPPO
+from models.custom_a2c import CustomA2C
 
-def evaluate_both_agents():
+def evaluate_agents():
     print("=" * 70)
-    print("PPO vs A2C DIRECT COMPARISON on Highway-fast-v0")
+    print("PPO vs A2C vs RANDOM DIRECT COMPARISON on Highway-fast-v0")
     print("=" * 70)
     
-    # Load models
+    env = gym.make(ENV_CONFIG["env_id"], render_mode="rgb_array")
+    env.unwrapped.configure(HIGHWAY_ENV_CONFIG)
+    env.reset()  # Resets observation space shape before loading weights
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # Load Models
     ppo_path = "./models/ppo_highway_final"
     a2c_path = "./models/a2c_highway_final"
     
-    try:
-        ppo_model = PPO.load(ppo_path)
-        print(f"✅ PPO model loaded from: {ppo_path}")
-    except FileNotFoundError:
-        print(f"❌ PPO model not found. Run: python train_ppo.py")
-        return
+    agents_to_evaluate = [("Random", None)]
     
     try:
-        a2c_model = A2C.load(a2c_path)
-        print(f"✅ A2C model loaded from: {a2c_path}")
-    except FileNotFoundError:
-        print(f"❌ A2C model not found. Run: python train_a2c.py")
-        return
-    
-    env = gym.make(ENV_CONFIG["env_id"], render_mode="rgb_array")
+        ppo_model = CustomPPO.load(ppo_path, envs=env, device=device)
+        print(f"Custom PPO model loaded from: {ppo_path}.pt")
+        agents_to_evaluate.insert(0, ("PPO", ppo_model))
+    except (FileNotFoundError, RuntimeError) as e:
+        print(f"Custom PPO model could not be loaded: {e}")
+
+    try:
+        a2c_model = CustomA2C.load(a2c_path, envs=env, device=device)
+        print(f"Custom A2C model loaded from: {a2c_path}.pt")
+        agents_to_evaluate.insert(1, ("A2C", a2c_model))
+    except (FileNotFoundError, RuntimeError) as e:
+        print(f"Custom A2C model could not be loaded: {e}")
+
     n_episodes = EVAL_CONFIG["n_eval_episodes"]
     
     print(f"\n{'=' * 70}")
     print(f"Running evaluation on {n_episodes} episodes each...")
     print(f"{'=' * 70}\n")
     
-    # Evaluate PPO
-    print(f"{'EVALUATING PPO':^70}")
-    print("-" * 70)
-    ppo_rewards = []
-    ppo_lengths = []
-    ppo_collisions = 0
-    
-    for episode in range(n_episodes):
-        obs, info = env.reset()
-        total_reward = 0
-        steps = 0
-        done = False
-        truncated = False
+    results = {}
+
+    # Evaluate each agent type
+    for agent_name, model in agents_to_evaluate:
+        print(f"{'EVALUATING ' + agent_name:^70}")
+        print("-" * 70)
         
-        while not (done or truncated):
-            action, _states = ppo_model.predict(obs, deterministic=True)
-            obs, reward, done, truncated, info = env.step(action)
-            total_reward += reward
-            steps += 1
+        rewards = []
+        lengths = []
+        collisions = 0
         
-        ppo_rewards.append(total_reward)
-        ppo_lengths.append(steps)
+        for episode in range(n_episodes):
+            obs, info = env.reset(seed=episode)
+            total_reward = 0
+            steps = 0
+            done = False
+            truncated = False
+            
+            while not (done or truncated):
+                if agent_name == "Random":
+                    action = env.action_space.sample()
+                else:
+                    action, _ = model.predict(obs, deterministic=True)
+                    if isinstance(action, np.ndarray):
+                        action = action.item()
+                
+                obs, reward, done, truncated, info = env.step(action)
+                total_reward += reward
+                steps += 1
+            
+            rewards.append(total_reward)
+            lengths.append(steps)
+            if done and not truncated:
+                collisions += 1
+                status = "CRASHED"
+            else:
+                status = "SURVIVED"
+            
+            print(f"  Episode {episode + 1:2d}: Reward = {total_reward:7.2f} | Steps = {steps:3d} | {status}")
         
-        if done and not truncated:
-            ppo_collisions += 1
-            status = "⚠️ CRASHED"
-        else:
-            status = "✅ SURVIVED"
-        
-        print(f"  Episode {episode + 1:2d}: Reward = {total_reward:7.2f} | "
-              f"Steps = {steps:3d} | {status}")
-    
-    # Evaluate A2C
-    print(f"\n{'EVALUATING A2C':^70}")
-    print("-" * 70)
-    a2c_rewards = []
-    a2c_lengths = []
-    a2c_collisions = 0
-    
-    for episode in range(n_episodes):
-        obs, info = env.reset()
-        total_reward = 0
-        steps = 0
-        done = False
-        truncated = False
-        
-        while not (done or truncated):
-            action, _states = a2c_model.predict(obs, deterministic=True)
-            obs, reward, done, truncated, info = env.step(action)
-            total_reward += reward
-            steps += 1
-        
-        a2c_rewards.append(total_reward)
-        a2c_lengths.append(steps)
-        
-        if done and not truncated:
-            a2c_collisions += 1
-            status = "⚠️ CRASHED"
-        else:
-            status = "✅ SURVIVED"
-        
-        print(f"  Episode {episode + 1:2d}: Reward = {total_reward:7.2f} | "
-              f"Steps = {steps:3d} | {status}")
-    
-    # Evaluate Random for baseline
-    print(f"\n{'EVALUATING RANDOM AGENT (Baseline)':^70}")
-    print("-" * 70)
-    random_rewards = []
-    random_lengths = []
-    random_collisions = 0
-    
-    for episode in range(n_episodes):
-        obs, info = env.reset()
-        total_reward = 0
-        steps = 0
-        done = False
-        truncated = False
-        
-        while not (done or truncated):
-            action = env.action_space.sample()
-            obs, reward, done, truncated, info = env.step(action)
-            total_reward += reward
-            steps += 1
-        
-        random_rewards.append(total_reward)
-        random_lengths.append(steps)
-        
-        if done and not truncated:
-            random_collisions += 1
-            status = "⚠️ CRASHED"
-        else:
-            status = "✅ SURVIVED"
-        
-        print(f"  Episode {episode + 1:2d}: Reward = {total_reward:7.2f} | {status}")
-    
+        results[agent_name] = {
+            "rewards": rewards,
+            "lengths": lengths,
+            "collisions": collisions,
+            "mean_reward": np.mean(rewards),
+            "std_reward": np.std(rewards),
+            "crash_rate": (collisions / n_episodes) * 100
+        }
+        print(f"\n{agent_name} Done.\n")
+
     env.close()
     
-    # Print comprehensive comparison
+    # Print comparison table
     print(f"\n{'=' * 70}")
     print("COMPREHENSIVE COMPARISON")
     print(f"{'=' * 70}\n")
     
-    # Create comparison table
-    print(f"{'Metric':<20} {'PPO':>15} {'A2C':>15} {'Random':>15}")
+    agents = list(results.keys())
+    headers = ["Metric"] + agents
+    print(f"{headers[0]:<20} " + " ".join([f"{a:>12}" for a in agents]))
     print("-" * 70)
-    print(f"{'Mean Reward':<20} {np.mean(ppo_rewards):>15.2f} {np.mean(a2c_rewards):>15.2f} {np.mean(random_rewards):>15.2f}")
-    print(f"{'Std Deviation':<20} {np.std(ppo_rewards):>15.2f} {np.std(a2c_rewards):>15.2f} {np.std(random_rewards):>15.2f}")
-    print(f"{'Max Reward':<20} {np.max(ppo_rewards):>15.2f} {np.max(a2c_rewards):>15.2f} {np.max(random_rewards):>15.2f}")
-    print(f"{'Min Reward':<20} {np.min(ppo_rewards):>15.2f} {np.min(a2c_rewards):>15.2f} {np.min(random_rewards):>15.2f}")
-    print(f"{'Collisions':<20} {ppo_collisions:>15d} {a2c_collisions:>15d} {random_collisions:>15d}")
-    print(f"{'Crash Rate %':<20} {ppo_collisions/n_episodes*100:>14.1f}% {a2c_collisions/n_episodes*100:>14.1f}% {random_collisions/n_episodes*100:>14.1f}%")
     
-    # Calculate improvements
-    ppo_vs_random = ((np.mean(ppo_rewards) - np.mean(random_rewards)) / abs(np.mean(random_rewards)) * 100)
-    a2c_vs_random = ((np.mean(a2c_rewards) - np.mean(random_rewards)) / abs(np.mean(random_rewards)) * 100)
-    ppo_vs_a2c = ((np.mean(ppo_rewards) - np.mean(a2c_rewards)) / abs(np.mean(a2c_rewards)) * 100)
+    mean_str = " ".join([f"{results[a]['mean_reward']:>12.2f}" for a in agents])
+    print(f"{'Mean Reward':<20} {mean_str}")
     
-    print(f"\n{'=' * 70}")
-    print("PERFORMANCE IMPROVEMENTS")
-    print(f"{'=' * 70}\n")
+    std_str = " ".join([f"{results[a]['std_reward']:>12.2f}" for a in agents])
+    print(f"{'Std Dev':<20} {std_str}")
     
-    print(f"PPO vs Random Agent:   {ppo_vs_random:+.1f}% improvement")
-    print(f"A2C vs Random Agent:   {a2c_vs_random:+.1f}% improvement")
-    print(f"PPO vs A2C:            {ppo_vs_a2c:+.1f}% {'advantage' if ppo_vs_a2c > 0 else 'disadvantage'}")
+    crash_str = " ".join([f"{results[a]['crash_rate']:>11.1f}%" for a in agents])
+    print(f"{'Crash Rate %':<20} {crash_str}")
     
-    print(f"\n{'=' * 70}")
-    print("KEY INSIGHTS")
-    print(f"{'=' * 70}\n")
-    
-    if np.std(ppo_rewards) < np.std(a2c_rewards):
-        print(f"✅ PPO is MORE STABLE (std: {np.std(ppo_rewards):.2f} vs {np.std(a2c_rewards):.2f})")
-        print(f"   This is because PPO uses clipping (clip_range=0.2)")
-        print(f"   A2C has no clipping, leading to higher variance")
-    else:
-        print(f"⚠️  A2C is more stable in this run")
-    
-    if ppo_collisions < a2c_collisions:
-        print(f"\n✅ PPO is SAFER ({ppo_collisions} crashes vs {a2c_collisions} crashes)")
-        print(f"   Clipped objective prevents reckless policy changes")
-    
-    if np.mean(ppo_rewards) > np.mean(a2c_rewards):
-        print(f"\n✅ PPO performs BETTER ({np.mean(ppo_rewards):.2f} vs {np.mean(a2c_rewards):.2f})")
-    
-    print(f"\n{'=' * 70}")
-    print("WHAT THIS SHOWS")
-    print(f"{'=' * 70}\n")
-    print("""
-This comparison demonstrates:
-
-1. ACTOR-CRITIC ARCHITECTURE
-   Both PPO and A2C use shared actor-critic networks.
-   Both have policy and value networks that learn together.
-
-2. PPO'S INNOVATION: CLIPPING
-   PPO uses: L = min(r*A, clip(r, 1-ε, 1+ε)*A)
-   A2C uses: L = r*A  (no clipping!)
-   Result: PPO is more stable
-
-3. GENERALIZED ADVANTAGE ESTIMATION (GAE)
-   Both use: gae_lambda = 0.95
-   This reduces variance in advantage estimates
-   Both benefit equally from this
-
-4. ALGORITHM COMPARISON
-   PPO: More sample-efficient, stable, industry standard
-   A2C: Simpler, but less stable, higher variance
-   
-CONCLUSION: PPO > A2C for this task! 🏆
-""")
-    
-    # Generate Evaluation Plot: Two-Panel Professional Layout
-    import matplotlib.pyplot as plt
+    # Generate Evaluation Plot
     plt.style.use('seaborn-v0_8-whitegrid')
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
     
-    # Create side-by-side subplots for maximum clarity
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    agents = list(results.keys())
+    means = [results[a]['mean_reward'] for a in agents]
+    stds = [results[a]['std_reward'] for a in agents]
+    crash_rates = [results[a]['crash_rate'] for a in agents]
     
-    agents = ['PPO', 'A2C', 'Random']
-    means = [np.mean(ppo_rewards), np.mean(a2c_rewards), np.mean(random_rewards)]
-    stds = [np.std(ppo_rewards), np.std(a2c_rewards), np.std(random_rewards)]
-    crash_rates = [ppo_collisions/n_episodes*100, a2c_collisions/n_episodes*100, random_collisions/n_episodes*100]
+    colors = ['#2980b9', '#c0392b', '#7f8c8d'][:len(agents)]
     
-    colors = ['#2980b9', '#e74c3c', '#7f8c8d']
-    
-    # --- PANEL 1: MEAN REWARDS ---
-    bars1 = ax1.bar(agents, means, yerr=stds, capsize=10, color=colors, alpha=0.9, edgecolor='black', linewidth=1.5)
-    ax1.set_ylabel('Mean Total Reward', fontsize=16, fontweight='bold', labelpad=10)
-    ax1.set_xlabel('Algorithm', fontsize=16, fontweight='bold', labelpad=10)
-    ax1.set_title('Evaluation: Average Reward', fontsize=18, fontweight='bold', pad=20)
-    ax1.tick_params(axis='both', which='major', labelsize=14)
-    ax1.grid(axis='y', linestyle='--', alpha=0.7)
-    
-    # Add value labels
+    # Mean Rewards
+    bars1 = ax1.bar(agents, means, yerr=stds, capsize=8, color=colors, alpha=0.9, edgecolor='black')
+    ax1.set_ylabel('Mean Total Reward', fontsize=12, fontweight='bold')
+    ax1.set_title('Average Reward', fontsize=14, fontweight='bold')
     for bar in bars1:
-        height = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width()/2., height + 0.5, f'{height:.1f}', 
-                ha='center', va='bottom', fontweight='bold', fontsize=14)
+        ax1.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.5, f'{bar.get_height():.1f}', ha='center', fontweight='bold')
 
-    # --- PANEL 2: CRASH RATES ---
-    bars2 = ax2.bar(agents, crash_rates, color=colors, alpha=0.9, hatch='//', edgecolor='black', linewidth=1.5)
-    ax2.set_ylabel('Crash Rate Percentage (%)', fontsize=16, fontweight='bold', labelpad=10)
-    ax2.set_xlabel('Algorithm', fontsize=16, fontweight='bold', labelpad=10)
-    ax2.set_title('Evaluation: Collision Safety', fontsize=18, fontweight='bold', pad=20)
+    # Crash Rates
+    bars2 = ax2.bar(agents, crash_rates, color=colors, alpha=0.9, hatch='//', edgecolor='black')
+    ax2.set_ylabel('Crash Rate (%)', fontsize=12, fontweight='bold')
+    ax2.set_title('Safety (Lower is Better)', fontsize=14, fontweight='bold')
     ax2.set_ylim(0, 115)
-    ax2.tick_params(axis='both', which='major', labelsize=14)
-    ax2.grid(axis='y', linestyle='--', alpha=0.7)
-    
-    # Add percentage labels
     for bar in bars2:
-        height = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2., height + 3, f'{height:.0f}%', 
-                ha='center', va='bottom', fontweight='bold', fontsize=14)
+        ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 3, f'{bar.get_height():.0f}%', ha='center', fontweight='bold')
 
     plt.tight_layout()
-    import os
     os.makedirs("./results", exist_ok=True)
-    plt.savefig('./results/plot_evaluation.png', dpi=300, bbox_inches='tight', facecolor='white')
-    print("✅ Hyper-clear evaluation plot saved to ./results/plot_evaluation.png\n")
-
-
-
+    plt.savefig('./results/plot_evaluation.png', dpi=300)
+    print("Evaluation plot saved to ./results/plot_evaluation.png\n")
 
 if __name__ == "__main__":
-    evaluate_both_agents()
+    evaluate_agents()

@@ -70,16 +70,24 @@ def plot_training_results():
     ax2.set_ylabel("Steps Survived")
     ax2.set_title("Episode Duration", fontsize=14, color='#34495e')
     
-    # 3. Reward vs Timesteps
+    # 3. Learning Stability (Rolling Standard Deviation)
     ax3 = axes[1, 0]
-    ax3.scatter(timesteps, rewards, alpha=0.3, s=15, color=c_ts_raw, edgecolors='none')
-    if len(rewards) > 10:
-        smoothed = moving_average(rewards, window=10)
-        smoothed_ts = timesteps[9:9+len(smoothed)] if len(timesteps) > 9 else timesteps
-        ax3.plot(smoothed_ts, smoothed, color=c_ts_sm, linewidth=2.5)
+    if len(rewards) > 20:
+        # Calculate rolling std dev to show stability
+        rolling_std = []
+        window_size = 20
+        for i in range(len(rewards) - window_size + 1):
+            rolling_std.append(np.std(rewards[i:i+window_size]))
+        
+        # Match timesteps with rolling window (centered/trailing)
+        std_ts = timesteps[window_size-1:]
+        ax3.fill_between(std_ts, 0, rolling_std, color=c_ts_sm, alpha=0.3)
+        ax3.plot(std_ts, rolling_std, color=c_ts_sm, linewidth=2, label='20-Ep Reward StdDev')
+    
     ax3.set_xlabel("Total Timesteps")
-    ax3.set_ylabel("Total Reward")
-    ax3.set_title("Sample Efficiency", fontsize=14, color='#34495e')
+    ax3.set_ylabel("Std Dev of Reward")
+    ax3.set_title("Learning Stability", fontsize=14, color='#34495e')
+    ax3.legend(loc='upper right', frameon=True)
     
     # 4. Reward Distribution
     ax4 = axes[1, 1]

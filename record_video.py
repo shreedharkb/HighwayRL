@@ -5,13 +5,14 @@ Features: Compact HUD overlay, high-resolution, cinematic quality
 
 import gymnasium as gym
 import highway_env
-from stable_baselines3 import PPO
+import torch
+from models.custom_ppo import CustomPPO
 import os
 import cv2
 import imageio
 import numpy as np
 
-from config import ENV_CONFIG
+from config import ENV_CONFIG, HIGHWAY_ENV_CONFIG
 
 # Highway-env Discrete Meta Actions translation
 ACTION_NAMES = ["LANE LEFT", "IDLE", "LANE RIGHT", "FASTER", "SLOWER"]
@@ -176,15 +177,25 @@ def record():
     video_folder = "./results/videos"
     os.makedirs(video_folder, exist_ok=True)
 
-    try:
-        model = PPO.load(model_path)
-        print(f"✓ Loaded model from: {model_path}")
-    except FileNotFoundError:
-        print(f"✗ Error: Could not find model at {model_path}. Make sure to train first!")
-        return
+    # Try best_model first (saved by EvalCallback), fall back to final
+    best_model_path = "./models/best_model"
+    final_model_path = "./models/ppo_highway_final"
+
+    model_path = best_model_path if os.path.exists(best_model_path + ".pt") else final_model_path
 
     # Create the environment with cinematic high-res render settings
     base_env = gym.make(ENV_CONFIG["env_id"], render_mode="rgb_array")
+
+    # Apply the same env config used during training
+    base_env.unwrapped.configure(HIGHWAY_ENV_CONFIG)
+
+    try:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = CustomPPO.load(model_path, envs=base_env, device=device)
+        print(f"Loaded model from: {model_path}")
+    except FileNotFoundError:
+        print(f"✗ Error: Could not find model at {model_path}. Make sure to train first!")
+        return
 
     # Upgrade visuals to cinematic quality
     base_env.unwrapped.configure({
@@ -193,6 +204,7 @@ def record():
         "scaling": 10,               # High detail cars/assets
         "show_trajectories": True,   # Show AI's predicted paths
     })
+    base_env.reset()  # Apply all config changes
 
     fps = 15  # Always 15fps regardless of env metadata (highway-fast-v0 reports 2 fps which is wrong)
 
@@ -231,7 +243,7 @@ def record():
         print(f"Recording Episode {total_episodes}/{target_episodes}...", end=" ", flush=True)
 
         while not (done or truncated):
-            action, _states = model.predict(obs, deterministic=True)
+            action, _ = model.predict(obs, deterministic=False)  # Stochastic = varied actions
             obs, reward, done, truncated, info = base_env.step(action)
             episode_reward += reward
             global_reward += reward
@@ -250,7 +262,7 @@ def record():
             gameplay_frames.append(frame)
 
         if len(episode_frames) >= min_frames_per_episode:
-            print(f"✓ Reward: {episode_reward:.2f}, Steps: {episode_steps}")
+            print(f"Reward: {episode_reward:.2f}, Steps: {episode_steps}")
         else:
             gameplay_frames = gameplay_frames[:-len(episode_frames)]
             total_episodes -= 1
@@ -279,14 +291,14 @@ def record():
 
     video_duration = len(all_frames) / fps
 
-    print(f"\n✓ RECORDING COMPLETE!")
+    print(f"\nRECORDING COMPLETE!")
     print(f"  Total Episodes: {total_episodes}")
     print(f"  Total Steps: {total_steps}")
     print(f"  Global Reward: {global_reward:.2f}")
     print(f"  Video Duration: {video_duration:.1f} seconds")
     print(f"  Frames: {len(all_frames)} (intro:{len(intro_frames)} + gameplay:{len(gameplay_frames)} + outro:{len(outro_frames)})")
     print(f"  FPS: {fps}")
-    print(f"  ✓ Video saved to: {video_path}")
+    print(f"  Video saved to: {video_path}")
 
 
 if __name__ == "__main__":

@@ -167,9 +167,11 @@ Where:
 ├── 📋 requirements.txt        Python dependencies
 ├── 📄 LICENSE                  MIT License
 │
-├── 🤖 models/                 Trained model checkpoints
-│   ├── ppo_highway_final.zip
-│   └── a2c_highway_final.zip
+├── 🤖 models/                 Custom PyTorch Architectures
+│   ├── custom_ppo.py          PPO Math & Logic
+│   ├── custom_a2c.py          A2C Math & Logic
+│   ├── ppo_highway_final.pt   Trained Weights
+│   └── a2c_highway_final.pt   Trained Weights
 │
 ├── 📊 results/                Training outputs
 │   ├── training_metrics.json
@@ -210,9 +212,9 @@ PPO_CONFIG = {
 
 | Technology | Purpose |
 |:---:|:---:|
-| <img src="https://img.shields.io/badge/Gymnasium-0081CB?style=flat-square&logo=openai&logoColor=white" /> | RL Environment Interface |
+| <img src="https://img.shields.io/badge/OpenAI--Gym-0081CB?style=flat-square&logo=openai&logoColor=white" /> | RL Environment Interface |
 | <img src="https://img.shields.io/badge/Highway--Env-4CAF50?style=flat-square&logo=data:image/svg+xml;base64,&logoColor=white" /> | Driving Simulator |
-| <img src="https://img.shields.io/badge/Stable--Baselines3-FF6F00?style=flat-square&logo=python&logoColor=white" /> | PPO & A2C Algorithms |
+| <img src="https://img.shields.io/badge/Custom--RL--Engines-FF6F00?style=flat-square&logo=python&logoColor=white" /> | From-Scratch PPO & A2C |
 | <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=flat-square&logo=pytorch&logoColor=white" /> | Neural Networks (GPU) |
 | <img src="https://img.shields.io/badge/Matplotlib-11557C?style=flat-square&logo=plotly&logoColor=white" /> | Visualization |
 | <img src="https://img.shields.io/badge/OpenCV-5C3EE8?style=flat-square&logo=opencv&logoColor=white" /> | Video Processing |
