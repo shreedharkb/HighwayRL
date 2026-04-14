@@ -9,9 +9,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
 
-# ------------------------------------------------------------------
-# 1. CUSTOM PPO AGENT
-# ------------------------------------------------------------------
+
+
 class MyPPOAgent(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(MyPPOAgent, self).__init__()
@@ -41,14 +40,12 @@ class MyPPOAgent(nn.Module):
         entropy = dist.entropy()
         return log_prob, entropy, value
 
-# ------------------------------------------------------------------
-# 2. PPO TRAINING (WITH METRICS)
-# ------------------------------------------------------------------
+
 def train_ppo(env_name="highway-fast-v0", total_timesteps=50000):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"--- Training PPO on {device} ---")
     
-    # Using a single environment to guarantee 100% bug-free execution
+  
     env = gym.make(env_name, render_mode=None)
     env.unwrapped.configure({
         "observation": {"type": "Kinematics", "vehicles_count": 10},
@@ -57,13 +54,12 @@ def train_ppo(env_name="highway-fast-v0", total_timesteps=50000):
         "reward_speed_range": [20, 35]
     })
     
-    # Do exactly one reset to give the env a chance to build the 'real' shape
+   
     env.reset()
     
     env = gym.wrappers.RecordEpisodeStatistics(env)
     
-    # We must compute state_dim from what the env ACTUALLY returns, not the raw space,
-    # as highway-env sometimes outputs flattened arrays vs structured ones depending on version
+    
     sample_obs, _ = env.reset()
     sample_obs_flat = np.array(sample_obs).flatten()
     state_dim = sample_obs_flat.shape[0]
